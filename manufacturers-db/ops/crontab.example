@@ -1,0 +1,26 @@
+# Manufacturers DB — example crontab.
+# Install with `crontab manufacturers-db/ops/crontab.example` (paths assume the repo
+# is checked out at /opt/ai-tender-hub).
+#
+# Logs go to ~/.cache/mdb/.
+SHELL=/bin/bash
+MDB=/opt/ai-tender-hub/manufacturers-db
+LOG=$HOME/.cache/mdb
+
+# Daily GLEIF refresh — Kazakhstan + Russia + UK + DE (extend as needed)
+30 03 * * *  cd $MDB && python -m src ingest gleif --country KZ --limit 5000 >> $LOG/gleif.log 2>&1
+35 03 * * *  cd $MDB && python -m src ingest gleif --country RU --limit 5000 >> $LOG/gleif.log 2>&1
+40 03 * * *  cd $MDB && python -m src ingest gleif --country GB --limit 5000 >> $LOG/gleif.log 2>&1
+45 03 * * *  cd $MDB && python -m src ingest gleif --country DE --limit 5000 >> $LOG/gleif.log 2>&1
+50 03 * * *  cd $MDB && python -m src normalize gleif >> $LOG/gleif.log 2>&1
+
+# Weekly SEC EDGAR refresh (full filer universe ~10k entities, ~20 min)
+00 04 * * 0  cd $MDB && python -m src ingest sec_edgar --limit 15000 >> $LOG/sec.log 2>&1
+40 04 * * 0  cd $MDB && python -m src normalize sec_edgar >> $LOG/sec.log 2>&1
+
+# Monthly trade flow refresh (year just ended)
+00 05 1 * *  cd $MDB && python -m src trade --period $(date -d 'last year' +\%Y) --flow M >> $LOG/trade.log 2>&1
+05 05 1 * *  cd $MDB && python -m src trade --period $(date -d 'last year' +\%Y) --flow X >> $LOG/trade.log 2>&1
+
+# Daily export refresh
+00 06 * * *  cd $MDB && for v in manufacturers_basic manufacturers_with_contacts manufacturers_with_financials trade_flows_by_hs; do python -m src export $v; done >> $LOG/export.log 2>&1

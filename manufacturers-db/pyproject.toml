@@ -1,0 +1,19 @@
+[project]
+name = "manufacturers-db"
+version = "0.1.0"
+description = "Aggregator of open manufacturer registries with canonical schema and CSV export"
+requires-python = ">=3.11"
+dependencies = [
+    "psycopg[binary]>=3.1",
+    "httpx>=0.27",
+    "click>=8.1",
+    "python-dotenv>=1.0",
+    "pydantic>=2.6",
+]
+
+[project.scripts]
+mdb = "src.__main__:cli"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
