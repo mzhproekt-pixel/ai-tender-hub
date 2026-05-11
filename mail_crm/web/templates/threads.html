@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Треды — Mail CRM{% endblock %}
+{% block content %}
+
+<h1 class="h3 mb-3">Треды <small class="text-muted">({{ threads | length }})</small></h1>
+
+<ul class="nav nav-pills mb-3">
+  {% for code, label in [
+      ('active', 'Активные'),
+      ('me', 'Висяки — мне'),
+      ('them', 'Висяки — им'),
+      ('frozen', 'Замороженные'),
+      ('all', 'Все')] %}
+    <li class="nav-item">
+      <a class="nav-link {% if view == code %}active{% endif %}"
+         href="{{ url_for('threads_list', view=code, q=q) }}">{{ label }}</a>
+    </li>
+  {% endfor %}
+</ul>
+
+<form class="row g-2 mb-3" method="get">
+  <input type="hidden" name="view" value="{{ view }}">
+  <div class="col-md-6">
+    <input type="text" name="q" value="{{ q }}" class="form-control"
+           placeholder="Поиск по теме / участникам">
+  </div>
+  <div class="col-md-2">
+    <button class="btn btn-primary w-100">Найти</button>
+  </div>
+</form>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Тема</th>
+          <th>Участники</th>
+          <th>Последнее письмо</th>
+          <th class="text-end">Дней</th>
+          <th>Статус</th>
+          <th>Заметка</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in threads %}
+          <tr>
+            <td>
+              <a href="{{ url_for('thread_detail', thread_id=t.id) }}">
+                {{ t.subject_normalized or '(без темы)' }}
+              </a>
+              <span class="badge bg-light text-muted ms-1">{{ t.message_count }}</span>
+            </td>
+            <td class="small text-muted text-truncate" style="max-width: 250px;">
+              {{ (t.participants | jl) | join(', ') }}
+            </td>
+            <td class="text-nowrap small">{{ t.last_message_date | dt }}</td>
+            <td class="text-end">
+              {% if t.days_since_last is not none %}
+                {% if t.days_since_last > 14 %}
+                  <span class="text-danger">{{ t.days_since_last }}</span>
+                {% elif t.days_since_last >= 3 %}
+                  <span class="text-warning">{{ t.days_since_last }}</span>
+                {% else %}
+                  {{ t.days_since_last }}
+                {% endif %}
+              {% else %}—{% endif %}
+            </td>
+            <td>
+              {% if t.awaiting_response_from == 'me' %}
+                <span class="badge bg-danger">Мне отвечать</span>
+              {% elif t.awaiting_response_from == 'them' %}
+                <span class="badge bg-warning text-dark">Ждём их</span>
+              {% else %}
+                <span class="badge bg-secondary">Закрыт</span>
+              {% endif %}
+              {% if t.state_status %}
+                <span class="badge bg-info">{{ t.state_status }}</span>
+              {% endif %}
+            </td>
+            <td class="small text-truncate" style="max-width: 200px;">
+              {{ t.state_notes or '' }}
+            </td>
+          </tr>
+        {% else %}
+          <tr><td colspan="6" class="text-center text-muted py-4">Тредов не найдено</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

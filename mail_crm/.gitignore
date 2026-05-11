@@ -4,6 +4,7 @@
 *.db-shm
 errors.log
 mail_crm_report.xlsx
+task_logs/
 __pycache__/
 *.pyc
 .venv/

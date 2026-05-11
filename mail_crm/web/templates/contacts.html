@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Контакты — Mail CRM{% endblock %}
+{% block content %}
+
+<h1 class="h3 mb-3">Контакты <small class="text-muted">({{ contacts | length }})</small></h1>
+
+<form class="row g-2 mb-3" method="get">
+  <div class="col-md-5">
+    <input type="text" name="q" value="{{ q }}" class="form-control"
+           placeholder="Поиск по email / имени / компании">
+  </div>
+  <div class="col-md-3">
+    <select name="relation" class="form-select">
+      <option value="">Все типы</option>
+      {% for r in relations %}
+        <option value="{{ r }}" {% if r == relation %}selected{% endif %}>{{ r }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-2">
+    <button type="submit" class="btn btn-primary w-100">Фильтр</button>
+  </div>
+  <div class="col-md-2">
+    <a href="{{ url_for('contacts_list') }}" class="btn btn-outline-secondary w-100">Сброс</a>
+  </div>
+</form>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0 align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Email</th>
+          <th>Имя</th>
+          <th>Компания</th>
+          <th>Сфера</th>
+          <th>Тип</th>
+          <th>Последний контакт</th>
+          <th class="text-end">Отпр.</th>
+          <th class="text-end">Получ.</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in contacts %}
+          <tr>
+            <td><a href="{{ url_for('contact_detail', contact_id=c.id) }}">{{ c.email }}</a></td>
+            <td>{{ c.name or '—' }}</td>
+            <td>{{ c.company or '—' }}</td>
+            <td>{{ c.sphere or '—' }}</td>
+            <td>
+              {% if c.relation_type %}
+                <span class="badge bg-secondary">{{ c.relation_type }}</span>
+              {% endif %}
+            </td>
+            <td class="text-nowrap">{{ c.last_seen | dt }}</td>
+            <td class="text-end">{{ c.sent_count }}</td>
+            <td class="text-end">{{ c.received_count }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="8" class="text-center text-muted py-4">Ничего не найдено</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

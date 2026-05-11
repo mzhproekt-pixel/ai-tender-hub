@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Дашборд — Mail CRM{% endblock %}
+{% block content %}
+
+<h1 class="h3 mb-4">Обзор</h1>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-2 col-sm-4 col-6">
+    <div class="card text-center h-100">
+      <div class="card-body">
+        <div class="text-muted small">Писем</div>
+        <div class="display-6">{{ stats.total_msgs or 0 }}</div>
+        {% if stats.unanalyzed %}
+          <div class="small text-warning">не анализировано: {{ stats.unanalyzed }}</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="col-md-2 col-sm-4 col-6">
+    <div class="card text-center h-100">
+      <div class="card-body">
+        <div class="text-muted small">Контактов</div>
+        <div class="display-6">{{ stats.total_contacts or 0 }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-2 col-sm-4 col-6">
+    <div class="card text-center h-100">
+      <div class="card-body">
+        <div class="text-muted small">Активных тредов</div>
+        <div class="display-6">{{ stats.active_threads or 0 }}</div>
+        <div class="small text-muted">≤ {{ ACTIVE_DAYS }} дн.</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3 col-sm-6">
+    <a href="{{ url_for('threads_list', view='me') }}" class="text-decoration-none">
+    <div class="card text-center h-100 border-danger">
+      <div class="card-body">
+        <div class="text-muted small">Висяки — мне отвечать</div>
+        <div class="display-6 text-danger">{{ stats.my_turn or 0 }}</div>
+      </div>
+    </div>
+    </a>
+  </div>
+  <div class="col-md-3 col-sm-6">
+    <a href="{{ url_for('threads_list', view='them') }}" class="text-decoration-none">
+    <div class="card text-center h-100 border-warning">
+      <div class="card-body">
+        <div class="text-muted small">Ждём ответа от них</div>
+        <div class="display-6 text-warning">{{ stats.their_turn or 0 }}</div>
+        <div class="small text-muted">≥ {{ FOLLOWUP_DAYS }} дн.</div>
+      </div>
+    </div>
+    </a>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header">Срочное — где жду ответа от меня</div>
+      {% if urgent %}
+        <ul class="list-group list-group-flush">
+          {% for u in urgent %}
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              <a href="{{ url_for('thread_detail', thread_id=u.id) }}" class="text-truncate" style="max-width: 70%">
+                {{ u.subject_normalized or '(без темы)' }}
+              </a>
+              <span class="badge bg-danger rounded-pill">{{ u.days_since_last }} дн.</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="card-body text-muted">Висяков нет — красавчик 👏</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header">Топ-10 контактов по объёму</div>
+      <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <thead><tr>
+            <th>Email</th><th>Имя</th><th>Компания</th>
+            <th class="text-end">Отпр.</th><th class="text-end">Получ.</th>
+          </tr></thead>
+          <tbody>
+            {% for c in top_contacts %}
+              <tr>
+                <td><a href="#" class="text-decoration-none">{{ c.email }}</a></td>
+                <td>{{ c.name or '—' }}</td>
+                <td>{{ c.company or '—' }}</td>
+                <td class="text-end">{{ c.sent_count }}</td>
+                <td class="text-end">{{ c.received_count }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

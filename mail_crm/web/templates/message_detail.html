@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}{{ m.subject or 'Письмо' }}{% endblock %}
+{% block content %}
+
+<a href="javascript:history.back()" class="text-decoration-none">← Назад</a>
+<h4 class="mt-2">{{ m.subject or '(без темы)' }}</h4>
+<div class="text-muted mb-3">
+  {% if m.folder == 'sent' %}📤 от меня{% else %}📥 {{ m.from_email }}{% endif %}
+  → {{ (m.to_emails | jl) | join(', ') }} · {{ m.date | dt }}
+</div>
+
+{% if m.summary %}
+  <div class="alert alert-light"><b>Суммари:</b> {{ m.summary }}</div>
+{% endif %}
+
+<pre class="bg-light p-3" style="white-space: pre-wrap;">{{ m.body_text or '' }}</pre>
+
+{% endblock %}

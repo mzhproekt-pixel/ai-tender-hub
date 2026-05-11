@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Пайплайн — Mail CRM{% endblock %}
+{% block content %}
+
+<h1 class="h3 mb-3">Управление пайплайном</h1>
+<p class="text-muted">Запускайте скрипты в фоне прямо отсюда. Журнал хвостом обновляется каждые 2 секунды.</p>
+
+<div class="row g-3" id="tasks">
+  {% for name, label, descr in [
+      ('fetch', '1. Выгрузка', 'Забрать новые письма с Mail.ru через IMAP'),
+      ('analyze', '2. Анализ', 'Прогнать необработанные письма через Claude'),
+      ('match', '3. Треды', 'Пересобрать треды и аналитику'),
+      ('report', '4. Excel', 'Сформировать mail_crm_report.xlsx')
+  ] %}
+    {% set st = task_state[name] %}
+    <div class="col-md-6">
+      <div class="card h-100">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <strong>{{ label }}</strong>
+          <span data-status="{{ name }}">
+            {% if st.running %}
+              <span class="badge bg-warning text-dark">выполняется…</span>
+            {% elif st.rc is not none %}
+              {% if st.rc == 0 %}
+                <span class="badge bg-success">OK</span>
+              {% else %}
+                <span class="badge bg-danger">rc={{ st.rc }}</span>
+              {% endif %}
+            {% else %}
+              <span class="badge bg-secondary">не запускалась</span>
+            {% endif %}
+          </span>
+        </div>
+        <div class="card-body">
+          <p class="small text-muted">{{ descr }}</p>
+          <form method="post" action="{{ url_for('task_start', name=name) }}">
+            <button class="btn btn-primary btn-sm"
+                    {% if st.running %}disabled{% endif %}>
+              ▶ Запустить
+            </button>
+            <span class="text-muted small ms-2">
+              {% if st.started_at %}запущена: {{ st.started_at | dt }}{% endif %}
+            </span>
+          </form>
+          <pre class="bg-dark text-light mt-3 p-2 small"
+               style="max-height: 220px; overflow-y: auto;"
+               data-tail="{{ name }}">{{ st.tail | join('\n') }}</pre>
+        </div>
+      </div>
+    </div>
+  {% endfor %}
+</div>
+
+<script>
+async function refresh() {
+  try {
+    const r = await fetch("{{ url_for('tasks_status_json') }}");
+    const data = await r.json();
+    for (const [name, st] of Object.entries(data)) {
+      const statusEl = document.querySelector(`[data-status="${name}"]`);
+      const tailEl = document.querySelector(`[data-tail="${name}"]`);
+      if (!statusEl || !tailEl) continue;
+
+      let badge;
+      if (st.running) badge = '<span class="badge bg-warning text-dark">выполняется…</span>';
+      else if (st.rc === 0) badge = '<span class="badge bg-success">OK</span>';
+      else if (st.rc !== null) badge = `<span class="badge bg-danger">rc=${st.rc}</span>`;
+      else badge = '<span class="badge bg-secondary">не запускалась</span>';
+      statusEl.innerHTML = badge;
+      tailEl.textContent = (st.tail || []).join('\n');
+      tailEl.scrollTop = tailEl.scrollHeight;
+    }
+  } catch (e) { console.warn(e); }
+}
+setInterval(refresh, 2000);
+</script>
+
+{% endblock %}

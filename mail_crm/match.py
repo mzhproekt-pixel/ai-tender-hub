@@ -188,11 +188,12 @@ def upsert_threads(conn, threads: dict[str, list[dict]]) -> None:
 
         cur = conn.execute("""
             INSERT INTO threads
-            (subject_normalized, participants, first_message_date,
-             last_message_date, message_count, last_direction,
-             awaiting_response_from, days_since_last)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            (root_message_id, subject_normalized, participants,
+             first_message_date, last_message_date, message_count,
+             last_direction, awaiting_response_from, days_since_last)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
+            first["message_id"],
             normalize_subject(first["subject"]),
             db.json_dumps(sorted(participants)),
             first["date"],

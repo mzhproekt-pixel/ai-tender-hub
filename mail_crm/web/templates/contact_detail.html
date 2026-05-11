@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}{{ contact.email }} — Mail CRM{% endblock %}
+{% block content %}
+
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('contacts_list') }}">Контакты</a></li>
+    <li class="breadcrumb-item active">{{ contact.email }}</li>
+  </ol>
+</nav>
+
+<div class="row g-3">
+  <div class="col-lg-5">
+    <div class="card">
+      <div class="card-header">Карточка</div>
+      <div class="card-body">
+        <form method="post">
+          <div class="mb-2">
+            <label class="form-label text-muted small">Email</label>
+            <input type="text" class="form-control" value="{{ contact.email }}" disabled>
+          </div>
+          <div class="mb-2">
+            <label class="form-label text-muted small">Имя</label>
+            <input type="text" name="name" class="form-control" value="{{ contact.name or '' }}">
+          </div>
+          <div class="mb-2">
+            <label class="form-label text-muted small">Компания</label>
+            <input type="text" name="company" class="form-control" value="{{ contact.company or '' }}">
+          </div>
+          <div class="mb-2">
+            <label class="form-label text-muted small">Сфера</label>
+            <input type="text" name="sphere" class="form-control" value="{{ contact.sphere or '' }}">
+          </div>
+          <div class="mb-2">
+            <label class="form-label text-muted small">Тип отношений</label>
+            <select name="relation_type" class="form-select">
+              {% set rel = contact.relation_type or '' %}
+              {% for opt in ['', 'lead', 'client', 'partner', 'contact', 'spam'] %}
+                <option value="{{ opt }}" {% if opt == rel %}selected{% endif %}>{{ opt or '— не задан —' }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label text-muted small">Заметки</label>
+            <textarea name="notes" rows="5" class="form-control">{{ contact.notes or '' }}</textarea>
+          </div>
+          <div class="d-flex justify-content-between text-muted small mb-3">
+            <div>Первый контакт: {{ contact.first_seen | dt }}</div>
+            <div>Последний: {{ contact.last_seen | dt }}</div>
+          </div>
+          <div class="d-flex gap-2">
+            <span class="badge bg-success">📤 {{ contact.sent_count }}</span>
+            <span class="badge bg-info">📥 {{ contact.received_count }}</span>
+          </div>
+          <button type="submit" class="btn btn-primary mt-3">Сохранить</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header">Письма (последние 100)</div>
+      <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0">
+          <thead class="table-light">
+            <tr><th>Дата</th><th>↕</th><th>Тема</th><th>Категория</th></tr>
+          </thead>
+          <tbody>
+            {% for m in messages %}
+              <tr>
+                <td class="text-nowrap">{{ m.date | dt }}</td>
+                <td>{% if m.folder == 'sent' %}📤{% else %}📥{% endif %}</td>
+                <td><a href="{{ url_for('message_detail', message_id=m.message_id) }}">{{ m.subject or '(без темы)' }}</a></td>
+                <td><span class="text-muted small">{{ m.category or '—' }}</span></td>
+              </tr>
+            {% else %}
+              <tr><td colspan="4" class="text-center text-muted py-3">Писем нет</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

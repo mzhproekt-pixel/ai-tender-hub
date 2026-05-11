@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}{{ thread.subject_normalized or 'Тред' }} — Mail CRM{% endblock %}
+{% block content %}
+
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('threads_list') }}">Треды</a></li>
+    <li class="breadcrumb-item active">{{ thread.subject_normalized or '(без темы)' }}</li>
+  </ol>
+</nav>
+
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card mb-3">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span>📨 {{ thread.message_count }} писем · {{ thread.first_message_date | dt }} → {{ thread.last_message_date | dt }}</span>
+        <span>
+          {% if thread.awaiting_response_from == 'me' %}
+            <span class="badge bg-danger">Мне отвечать</span>
+          {% elif thread.awaiting_response_from == 'them' %}
+            <span class="badge bg-warning text-dark">Ждём их</span>
+          {% else %}
+            <span class="badge bg-secondary">Закрыт</span>
+          {% endif %}
+        </span>
+      </div>
+      <div class="card-body small text-muted">
+        Участники: {{ (thread.participants | jl) | join(', ') }}
+      </div>
+    </div>
+
+    {% for m in messages %}
+      <div class="card mb-3 {% if m.folder == 'sent' %}border-success{% endif %}">
+        <div class="card-header d-flex justify-content-between">
+          <div>
+            {% if m.folder == 'sent' %}📤 от меня{% else %}📥 {{ m.from_email }}{% endif %}
+            <span class="text-muted small">→ {{ (m.to_emails | jl) | join(', ') }}</span>
+          </div>
+          <span class="text-muted small">{{ m.date | dt }}</span>
+        </div>
+        <div class="card-body">
+          <h6 class="card-title">{{ m.subject or '(без темы)' }}</h6>
+          {% if m.summary %}
+            <div class="alert alert-light py-2 mb-2 small"><b>Suммари:</b> {{ m.summary }}</div>
+          {% endif %}
+          {% if m.category %}
+            <span class="badge bg-secondary">{{ m.category }}</span>
+          {% endif %}
+          {% set commits = m.commitments | jl %}
+          {% if commits %}
+            <div class="mt-2 small"><b>Обязательства:</b>
+              <ul class="mb-0">{% for c in commits %}<li>{{ c }}</li>{% endfor %}</ul>
+            </div>
+          {% endif %}
+          {% set projects = m.mentioned_projects | jl %}
+          {% if projects %}
+            <div class="mt-1 small"><b>Проекты:</b> {{ projects | join(', ') }}</div>
+          {% endif %}
+          {% set amounts = m.mentioned_amounts | jl %}
+          {% if amounts %}
+            <div class="mt-1 small"><b>Суммы:</b> {{ amounts | join(', ') }}</div>
+          {% endif %}
+          <details class="mt-2">
+            <summary class="text-muted small">Показать тело письма</summary>
+            <pre class="bg-light p-2 mt-2 small" style="white-space: pre-wrap; max-height: 400px; overflow-y: auto;">{{ m.body_text or '' }}</pre>
+          </details>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+
+  <div class="col-lg-4">
+    <!-- Заметки / статус -->
+    <div class="card mb-3">
+      <div class="card-header">Заметки треда</div>
+      <div class="card-body">
+        <form method="post" action="{{ url_for('thread_state', thread_id=thread.id) }}">
+          <div class="mb-2">
+            <label class="form-label small text-muted">Статус</label>
+            <select name="status" class="form-select">
+              {% set st = thread.state_status or '' %}
+              {% for opt in ['', 'open', 'in_progress', 'done', 'archived'] %}
+                <option value="{{ opt }}" {% if opt == st %}selected{% endif %}>{{ opt or '— не задан —' }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-2">
+            <label class="form-label small text-muted">Заметки</label>
+            <textarea name="notes" rows="4" class="form-control">{{ thread.state_notes or '' }}</textarea>
+          </div>
+          <button class="btn btn-outline-primary btn-sm">Сохранить</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Форма ответа -->
+    {% if messages %}
+      {% set last = messages[-1] %}
+      {% set default_to = last.from_email if last.folder == 'inbox' else (last.to_emails | jl | join(', ')) %}
+      {% set raw_subj = last.subject or '' %}
+      {% set has_re = raw_subj[:3].lower() == 're:' %}
+      {% set default_subj = raw_subj if has_re else 'Re: ' + raw_subj %}
+      <div class="card">
+        <div class="card-header">✉️ Ответить</div>
+        <div class="card-body">
+          <form method="post" action="{{ url_for('thread_reply', thread_id=thread.id) }}">
+            <div class="mb-2">
+              <label class="form-label small text-muted">Кому (через запятую)</label>
+              <input type="text" name="to" class="form-control" value="{{ default_to }}">
+            </div>
+            <div class="mb-2">
+              <label class="form-label small text-muted">Тема</label>
+              <input type="text" name="subject" class="form-control" value="{{ default_subj }}">
+            </div>
+            <div class="mb-2">
+              <label class="form-label small text-muted">Текст</label>
+              <textarea name="body" rows="8" class="form-control" required></textarea>
+            </div>
+            <button class="btn btn-success btn-sm" type="submit"
+                    onclick="return confirm('Отправить письмо через smtp.mail.ru?')">
+              Отправить
+            </button>
+            <div class="form-text">Отправляется с ящика из MAILRU_LOGIN. После отправки появится в этом треде.</div>
+          </form>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}

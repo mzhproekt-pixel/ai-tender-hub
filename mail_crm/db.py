@@ -26,7 +26,8 @@ CREATE TABLE IF NOT EXISTS contacts (
     first_seen      TEXT,
     last_seen       TEXT,
     sent_count      INTEGER DEFAULT 0,
-    received_count  INTEGER DEFAULT 0
+    received_count  INTEGER DEFAULT 0,
+    notes           TEXT
 );
 
 CREATE TABLE IF NOT EXISTS messages (
@@ -51,6 +52,7 @@ CREATE TABLE IF NOT EXISTS messages (
 
 CREATE TABLE IF NOT EXISTS threads (
     id                       INTEGER PRIMARY KEY AUTOINCREMENT,
+    root_message_id          TEXT,
     subject_normalized       TEXT,
     participants             TEXT,
     first_message_date       TEXT,
@@ -68,13 +70,37 @@ CREATE TABLE IF NOT EXISTS thread_messages (
     FOREIGN KEY (thread_id) REFERENCES threads(id) ON DELETE CASCADE
 );
 
+-- Сохраняется между пересборками тредов: ключ — root_message_id (первое письмо)
+CREATE TABLE IF NOT EXISTS thread_state (
+    root_message_id TEXT PRIMARY KEY,
+    notes           TEXT,
+    status          TEXT,
+    updated_at      TEXT
+);
+
 CREATE INDEX IF NOT EXISTS idx_messages_message_id    ON messages(message_id);
 CREATE INDEX IF NOT EXISTS idx_messages_in_reply_to   ON messages(in_reply_to);
 CREATE INDEX IF NOT EXISTS idx_messages_analyzed_at   ON messages(analyzed_at);
 CREATE INDEX IF NOT EXISTS idx_messages_from          ON messages(from_email);
 CREATE INDEX IF NOT EXISTS idx_messages_date          ON messages(date);
 CREATE INDEX IF NOT EXISTS idx_contacts_email         ON contacts(email);
+CREATE INDEX IF NOT EXISTS idx_threads_root           ON threads(root_message_id);
 """
+
+
+def migrate_schema() -> None:
+    """
+    Лёгкая миграция для существующих БД: добавляет недостающие колонки.
+    Безопасно для свежих БД — там всё уже есть из CREATE TABLE.
+    """
+    with get_conn() as conn:
+        existing = {r["name"] for r in conn.execute("PRAGMA table_info(contacts)")}
+        if "notes" not in existing:
+            conn.execute("ALTER TABLE contacts ADD COLUMN notes TEXT")
+
+        existing = {r["name"] for r in conn.execute("PRAGMA table_info(threads)")}
+        if "root_message_id" not in existing:
+            conn.execute("ALTER TABLE threads ADD COLUMN root_message_id TEXT")
 
 
 def get_conn() -> sqlite3.Connection:
@@ -90,6 +116,7 @@ def init_schema() -> None:
     """Создаёт таблицы, если их нет. Идемпотентно."""
     with get_conn() as conn:
         conn.executescript(SCHEMA)
+    migrate_schema()
     logger.info("Схема БД инициализирована: %s", DB_PATH)
 
 
