@@ -1,0 +1,10 @@
+.env
+*.db
+*.db-wal
+*.db-shm
+errors.log
+mail_crm_report.xlsx
+__pycache__/
+*.pyc
+.venv/
+venv/
