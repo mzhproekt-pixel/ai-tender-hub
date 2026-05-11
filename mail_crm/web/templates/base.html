@@ -22,6 +22,7 @@
         <li class="nav-item"><a class="nav-link" href="{{ url_for('threads_list', view='them') }}">Висяки — им</a></li>
         <li class="nav-item"><a class="nav-link" href="{{ url_for('threads_list', view='frozen') }}">Замороженные</a></li>
         <li class="nav-item"><a class="nav-link" href="{{ url_for('tasks_page') }}">Пайплайн</a></li>
+        <li class="nav-item"><a class="nav-link" href="{{ url_for('settings_page') }}">⚙️ Настройки</a></li>
       </ul>
       <span class="navbar-text small text-secondary">
         {% set running = task_state.values() | selectattr('running') | list %}

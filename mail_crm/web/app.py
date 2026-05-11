@@ -25,7 +25,7 @@ from flask import (Flask, abort, flash, jsonify, redirect, render_template,
                    request, url_for)
 
 import db
-from web import mailer, tasks
+from web import mailer, settings, tasks
 
 ACTIVE_DAYS = 14
 FOLLOWUP_DAYS = 3
@@ -384,9 +384,32 @@ def tasks_status_json():
     return jsonify(tasks.all_status())
 
 
+# --- Routes: settings (ключи и логины) ---
+
+@app.route("/settings", methods=["GET", "POST"])
+def settings_page():
+    if request.method == "POST":
+        updates: dict[str, str] = {}
+        for key, _, secret in settings.FIELDS:
+            value = (request.form.get(key) or "").strip()
+            # Для секрета пустое поле = «не менять», непустое — записать.
+            if secret and value == "":
+                continue
+            updates[key] = value
+        settings.write_env(updates)
+        settings.apply_to_process(updates)
+        flash("Настройки сохранены в .env", "success")
+        return redirect(url_for("settings_page"))
+
+    return render_template("settings.html", fields=settings.current_view())
+
+
 def main() -> None:
     db.setup_logging()
     db.init_schema()
+    # При старте подгружаем .env в окружение, чтобы скрипты пайплайна
+    # видели те же значения, что и UI.
+    settings.apply_to_process(settings.read_env())
     app.run(host="127.0.0.1", port=5000, debug=False)
 
 
