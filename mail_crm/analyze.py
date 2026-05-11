@@ -24,9 +24,12 @@ import db
 
 logger = logging.getLogger("analyze")
 
-MODEL = "claude-opus-4-7"
+# Модель Claude для анализа писем.
+# Можно переопределить через переменную окружения ANTHROPIC_MODEL.
+# Дефолт — Haiku 4.5: быстрый и дешёвый, для деловых писем достаточно.
+DEFAULT_MODEL = "claude-haiku-4-5-20251001"
 MAX_TOKENS = 1024
-RATE_LIMIT_SEC = 0.5
+RATE_LIMIT_SEC = 0.3
 BODY_LIMIT = 8000
 
 SYSTEM_PROMPT = """Ты — аналитик деловой переписки. На вход получаешь письмо.
@@ -80,9 +83,9 @@ def extract_json(text: str) -> dict:
     raise ValueError("Не удалось распарсить JSON в ответе модели")
 
 
-def call_claude(client: Anthropic, content: str) -> dict:
+def call_claude(client: Anthropic, content: str, model: str) -> dict:
     response = client.messages.create(
-        model=MODEL,
+        model=model,
         max_tokens=MAX_TOKENS,
         system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": content}],
@@ -167,6 +170,8 @@ def main() -> int:
 
     api_key = db.env("ANTHROPIC_API_KEY", required=True)
     my_email = (db.env("MAILRU_LOGIN", required=True) or "").lower()
+    model = db.env("ANTHROPIC_MODEL", default=DEFAULT_MODEL)
+    logger.info("Модель Claude: %s", model)
 
     client = Anthropic(api_key=api_key)
     conn = db.get_conn()
@@ -190,7 +195,7 @@ def main() -> int:
     for row in pending:
         try:
             user_text = build_user_message(row)
-            analysis = call_claude(client, user_text)
+            analysis = call_claude(client, user_text, model)
 
             # Транзакция на письмо: и анализ, и контакты — атомарно
             conn.execute("BEGIN")
