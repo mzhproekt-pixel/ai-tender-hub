@@ -125,3 +125,32 @@ def current_view() -> list[dict]:
             "is_set": bool(raw),
         })
     return rows
+
+
+# Подстроки, по которым опознаём незаполненные значения из .env.example.
+PLACEHOLDER_MARKERS = ("замените", "sk-ant-замените")
+
+# Ключи, без которых пайплайн объективно не работает.
+CRITICAL_KEYS = ("MAILRU_APP_PASSWORD", "ANTHROPIC_API_KEY")
+
+
+def find_placeholders() -> list[dict]:
+    """
+    Возвращает список критичных ключей, чьи значения всё ещё являются
+    плейсхолдерами из .env.example. Используется баннером на /settings.
+    """
+    labels = {key: label for key, label, _ in FIELDS}
+    env_file = read_env()
+    out: list[dict] = []
+    for key in CRITICAL_KEYS:
+        raw = os.environ.get(key) or env_file.get(key, "")
+        if not raw:
+            continue
+        low = raw.lower()
+        if any(m in low for m in PLACEHOLDER_MARKERS):
+            out.append({
+                "key": key,
+                "label": labels.get(key, key),
+                "value_preview": raw[:40],
+            })
+    return out

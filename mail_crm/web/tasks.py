@@ -35,18 +35,23 @@ def status(name: str) -> dict:
         t = _TASKS.get(name)
         if not t:
             return {"name": name, "running": False, "started_at": None,
-                    "finished_at": None, "rc": None, "tail": []}
+                    "finished_at": None, "rc": None, "tail": [],
+                    "error_excerpt": []}
         running = t["proc"].poll() is None
         if not running and t["finished_at"] is None:
             t["finished_at"] = datetime.now(timezone.utc).isoformat()
             t["rc"] = t["proc"].returncode
+        tail_list = list(t["tail"])
+        # error_excerpt: последние 10 строк, только при провале.
+        error_excerpt = tail_list[-10:] if t["rc"] not in (None, 0) else []
         return {
             "name": name,
             "running": running,
             "started_at": t["started_at"],
             "finished_at": t["finished_at"],
             "rc": t["rc"],
-            "tail": list(t["tail"]),
+            "tail": tail_list,
+            "error_excerpt": error_excerpt,
         }
 
 

@@ -147,9 +147,16 @@ def find_sent_folder(imap: imaplib.IMAP4_SSL) -> str:
 
 
 def imap_date(start_date: str) -> str:
-    """Преобразует YYYY-MM-DD в формат IMAP SINCE: DD-Mon-YYYY."""
-    dt = datetime.strptime(start_date, "%Y-%m-%d")
-    return dt.strftime("%d-%b-%Y")
+    """Преобразует YYYY-MM-DD или DD.MM.YYYY в формат IMAP SINCE: DD-Mon-YYYY."""
+    # Попытка парсить оба формата: YYYY-MM-DD и DD.MM.YYYY
+    for fmt in ["%Y-%m-%d", "%d.%m.%Y"]:
+        try:
+            dt = datetime.strptime(start_date, fmt)
+            return dt.strftime("%d-%b-%Y")
+        except ValueError:
+            continue
+    # Если оба формата не сработали, выбросить ошибку
+    raise ValueError(f"Неподдерживаемый формат даты: {start_date} (используй YYYY-MM-DD или DD.MM.YYYY)")
 
 
 def fetch_folder(imap: imaplib.IMAP4_SSL, folder: str,
@@ -246,6 +253,20 @@ def main() -> int:
     login = db.env("MAILRU_LOGIN", required=True)
     password = db.env("MAILRU_APP_PASSWORD", required=True)
     start_date = db.env("START_DATE", default="2026-04-13")
+
+    # Pre-flight: ловим незаполненный плейсхолдер до похода в сеть.
+    # Подстрока "замените" покрывает шаблон из .env.example.
+    if not password or "замените" in password.lower():
+        logger.error(
+            "MAILRU_APP_PASSWORD не задан или содержит плейсхолдер из .env. "
+            "Откройте /settings и впишите настоящий пароль приложения Mail.ru "
+            "(https://account.mail.ru/user/2-step-auth/passwords). "
+            "Пайплайн не запустится, пока значение не будет заменено."
+        )
+        return 3
+    if not login or "замените" in login.lower():
+        logger.error("MAILRU_LOGIN не задан или содержит плейсхолдер. Откройте /settings.")
+        return 3
 
     logger.info("Подключаемся к %s:%d как %s", IMAP_HOST, IMAP_PORT, login)
     ctx = ssl.create_default_context()

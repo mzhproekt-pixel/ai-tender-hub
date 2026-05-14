@@ -22,9 +22,9 @@
               <span class="badge bg-warning text-dark">выполняется…</span>
             {% elif st.rc is not none %}
               {% if st.rc == 0 %}
-                <span class="badge bg-success">OK</span>
+                <span class="badge bg-success">✓ Готово</span>
               {% else %}
-                <span class="badge bg-danger">rc={{ st.rc }}</span>
+                <span class="badge bg-danger">✕ Ошибка (rc={{ st.rc }})</span>
               {% endif %}
             {% else %}
               <span class="badge bg-secondary">не запускалась</span>
@@ -45,6 +45,20 @@
           <pre class="bg-dark text-light mt-3 p-2 small"
                style="max-height: 220px; overflow-y: auto;"
                data-tail="{{ name }}">{{ st.tail | join('\n') }}</pre>
+          <div class="mt-2" data-error="{{ name }}"
+               {% if not st.error_excerpt %}style="display:none"{% endif %}>
+            <details open>
+              <summary class="text-danger small">
+                <strong>Подробности ошибки</strong>
+                <span class="text-muted">— код выхода
+                  <code data-rc="{{ name }}">{{ st.rc if st.rc is not none else '' }}</code>
+                </span>
+              </summary>
+              <pre class="bg-danger-subtle text-danger-emphasis border border-danger rounded p-2 small mt-2 mb-0"
+                   style="max-height: 160px; overflow-y: auto;"
+                   data-error-text="{{ name }}">{{ st.error_excerpt | join('\n') }}</pre>
+            </details>
+          </div>
         </div>
       </div>
     </div>
@@ -63,12 +77,21 @@ async function refresh() {
 
       let badge;
       if (st.running) badge = '<span class="badge bg-warning text-dark">выполняется…</span>';
-      else if (st.rc === 0) badge = '<span class="badge bg-success">OK</span>';
-      else if (st.rc !== null) badge = `<span class="badge bg-danger">rc=${st.rc}</span>`;
+      else if (st.rc === 0) badge = '<span class="badge bg-success">✓ Готово</span>';
+      else if (st.rc !== null) badge = `<span class="badge bg-danger">✕ Ошибка (rc=${st.rc})</span>`;
       else badge = '<span class="badge bg-secondary">не запускалась</span>';
       statusEl.innerHTML = badge;
       tailEl.textContent = (st.tail || []).join('\n');
       tailEl.scrollTop = tailEl.scrollHeight;
+
+      // Блок ошибки: показываем только если есть error_excerpt и rc != 0.
+      const errBlock = document.querySelector(`[data-error="${name}"]`);
+      const errText  = document.querySelector(`[data-error-text="${name}"]`);
+      const rcCode   = document.querySelector(`[data-rc="${name}"]`);
+      const failed   = st.rc !== null && st.rc !== 0;
+      if (errBlock) errBlock.style.display = failed ? '' : 'none';
+      if (errText)  errText.textContent = (st.error_excerpt || []).join('\n');
+      if (rcCode)   rcCode.textContent = st.rc !== null ? String(st.rc) : '';
     }
   } catch (e) { console.warn(e); }
 }

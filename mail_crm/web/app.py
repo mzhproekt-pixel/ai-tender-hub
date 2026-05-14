@@ -366,6 +366,11 @@ def message_detail(message_id: str):
 
 @app.route("/tasks")
 def tasks_page():
+    failed = [n for n, s in tasks.all_status().items()
+              if s["rc"] not in (None, 0)]
+    if failed:
+        flash(f"Задачи завершились с ошибкой: {', '.join(failed)}. "
+              f"Подробности — в карточках ниже.", "danger")
     return render_template("tasks.html")
 
 
@@ -401,7 +406,11 @@ def settings_page():
         flash("Настройки сохранены в .env", "success")
         return redirect(url_for("settings_page"))
 
-    return render_template("settings.html", fields=settings.current_view())
+    return render_template(
+        "settings.html",
+        fields=settings.current_view(),
+        placeholders=settings.find_placeholders(),
+    )
 
 
 def main() -> None:
